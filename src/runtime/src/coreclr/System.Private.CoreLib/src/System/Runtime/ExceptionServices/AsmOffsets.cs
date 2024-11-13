@@ -47,9 +47,9 @@ class AsmOffsets
     public const int OFFSETOF__REGDISPLAY__SP = 0x628;
     public const int OFFSETOF__REGDISPLAY__ControlPC = 0x630;
 #elif TARGET_LOONGARCH64
-    public const int SIZEOF__REGDISPLAY = 0xc70;
-    public const int OFFSETOF__REGDISPLAY__SP = 0xbb8;
-    public const int OFFSETOF__REGDISPLAY__ControlPC = 0xbc0;
+    public const int SIZEOF__REGDISPLAY = 0x660;
+    public const int OFFSETOF__REGDISPLAY__SP = 0x5a8;
+    public const int OFFSETOF__REGDISPLAY__ControlPC = 0x5b0;
 #endif
 
 #if TARGET_64BIT
@@ -99,9 +99,9 @@ class AsmOffsets
     public const int OFFSETOF__REGDISPLAY__SP = 0x620;
     public const int OFFSETOF__REGDISPLAY__ControlPC = 0x628;
 #elif TARGET_LOONGARCH64
-    public const int SIZEOF__REGDISPLAY = 0xc60;
-    public const int OFFSETOF__REGDISPLAY__SP = 0xbb0;
-    public const int OFFSETOF__REGDISPLAY__ControlPC = 0xbb8;
+    public const int SIZEOF__REGDISPLAY = 0x650;
+    public const int OFFSETOF__REGDISPLAY__SP = 0x5a0;
+    public const int OFFSETOF__REGDISPLAY__ControlPC = 0x5a8;
 #endif
 
 #if TARGET_64BIT
@@ -137,7 +137,7 @@ class AsmOffsets
 #elif TARGET_RISCV64
     public const int SIZEOF__PAL_LIMITED_CONTEXT = 0x220;
 #elif TARGET_LOONGARCH64
-    public const int SIZEOF__PAL_LIMITED_CONTEXT = 0x520;
+    public const int SIZEOF__PAL_LIMITED_CONTEXT = 0x220;
 #endif
 
 #if TARGET_AMD64
