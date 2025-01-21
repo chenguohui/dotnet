@@ -156,7 +156,7 @@ C_FUNC(\Name):
 
     // This instruction is recognized and potentially patched
     // by the linker (GD->IE/LE relaxation).
-    la.tls.desc  $a0, \var
+    la.tls.ie  $a0, \var
 
     ori  \target, $tp, 0
     add.d  \target, \target, $a0
@@ -171,7 +171,7 @@ C_FUNC(\Name):
     INLINE_GET_TLS_VAR  \target, C_FUNC(tls_CurrentThread)
 .endm
 
-// Target cannot be x0.
+// Target cannot be a0.
 .macro INLINE_GET_ALLOC_CONTEXT_BASE target
     INLINE_GET_TLS_VAR  \target, C_FUNC(tls_CurrentThread)
 .endm

@@ -139,7 +139,7 @@ C_FUNC(\Name\()_End):
 .endm
 
 .macro EMIT_BREAKPOINT
-        break 0
+        break
 .endm
 
 .macro EPILOG_BRANCH Target
@@ -377,7 +377,7 @@ C_FUNC(\Name\()_End):
 
         // This instruction is recognized and potentially patched
         // by the linker (GD->IE/LE relaxation).
-        la.tls.desc  $a0, t_runtime_thread_locals
+        la.tls.ie  $a0, t_runtime_thread_locals
 
         addi.d  \target, $tp, OFFSETOF__RuntimeThreadLocals__ee_alloc_context
         add.d  \target, \target, $a0
