@@ -463,8 +463,7 @@ typedef struct DECLSPEC_ALIGN(16) _T_CONTEXT {
     //
     // Floating Point Registers: FPR64/LSX/LASX.
     //
-    ULONGLONG F[4*32];
-    DWORD64 Fcc;
+    ULONGLONG F[32];
     DWORD   Fcsr;
 } T_CONTEXT, *PT_CONTEXT;
 

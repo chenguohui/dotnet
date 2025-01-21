@@ -168,9 +168,7 @@ WRITE_BARRIER_END JIT_ByRefWriteBarrier
 WRITE_BARRIER_ENTRY JIT_CheckedWriteBarrier
 
     // load the address wbs_card_table to $t3
-.Ltmp0:
-    pcaddi $t3, 0
-    .reloc .Ltmp0, R_LARCH_PCREL20_S2, wbs_card_table
+    la.local  $t3, wbs_card_table
     // wbs_highest_address = wbs_card_table + 48
     ld.d  $t1, $t3, 48
     // wbs_lowest_address  = wbs_card_table + 40
@@ -208,9 +206,7 @@ WRITE_BARRIER_ENTRY JIT_WriteBarrier
     // load the address wbs_card_table to the $t3
     // and will cache the wbs_card_table by $t3 within the JIT_WriteBarrier.
     // So please DONT'T overwrite the $t3 within the JIT_WriteBarrier !!!
-.Ltmp1:
-    pcaddi $t3, 0
-    .reloc .Ltmp1, R_LARCH_PCREL20_S2, wbs_card_table
+    la.local  $t3, wbs_card_table
 
 #ifdef WRITE_BARRIER_CHECK
     // Update GC Shadow Heap
@@ -975,25 +971,10 @@ LEAF_END JIT_PatchpointForced, _TEXT
 
 LEAF_ENTRY GetThreadStaticsVariableOffset, _TEXT
         PROLOG_SAVE_REG_PAIR_INDEXED   22, 1, 16
-        la.tls.desc   $a0, t_ThreadStatics
+        la.tls.ie   $a0, t_ThreadStatics
         EPILOG_RESTORE_REG_PAIR_INDEXED 22, 1, 16
         EPILOG_RETURN
 LEAF_END GetThreadStaticsVariableOffset, _TEXT
-// ------------------------------------------------------------------
-
-// ------------------------------------------------------------------
-// size_t GetTLSResolverAddress()
-
-// Helper to get the TLS resolver address. This will be then used to determine if we have a static or dynamic resolver.
-LEAF_ENTRY GetTLSResolverAddress, _TEXT
-        //                           $fp,$ra
-        PROLOG_SAVE_REG_PAIR_INDEXED  22, 1, 16
-        pcalau12i  $a0, %desc_pc_hi20(t_ThreadStatics)
-        addi.d     $a0, $a0, %desc_pc_lo12(t_ThreadStatics)
-        ld.d       $a0, $a0, %desc_ld(t_ThreadStatics)
-        EPILOG_RESTORE_REG_PAIR_INDEXED  22, 1, 16
-        EPILOG_RETURN
-LEAF_END GetTLSResolverAddress, _TEXT
 // ------------------------------------------------------------------
 
 LEAF_ENTRY JIT_PollGC, _TEXT
