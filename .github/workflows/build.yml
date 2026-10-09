@@ -7,12 +7,12 @@ on:
         description: 'dotnet VMR fork name'
         required: true
         type: string
-        default: chenguohui
-      branch:
-        description: 'dotnet VMR branch name'
+        default: loongson
+      tag:
+        description: 'LoongArch64 release tag to build and publish'
         required: true
         type: string
-        default: v10.0.104
+        default: v10.0.112-loongarch64
       branding:
         description: '.NET 10.0-release, .NET 11.0-repodefault'
         required: true
@@ -22,16 +22,39 @@ on:
         description: 'dotnet OfficialBuildId'
         required: true
         type: string
-        default: 20260219.10
+        default: 20260822.8
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check tag and release
+      run: |
+        set -euo pipefail
+        tag_name="${{ inputs.tag }}"
+
+        # The build is driven by an existing tag, never by a branch.
+        if ! git ls-remote --exit-code --tags https://github.com/${{ inputs.fork }}/dotnet "refs/tags/$tag_name" >/dev/null; then
+          echo "::error::tag '$tag_name' does not exist in ${{ inputs.fork }}/dotnet"
+          exit 1
+        fi
+
+        # GitHub keeps a single release per tag. Deleting a stale release is a
+        # manual step, so report it here rather than at the end of the build.
+        if curl -sf -o /dev/null -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+             "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag_name"; then
+          echo "::error::release '$tag_name' already exists in ${{ github.repository }}; delete it before re-running"
+          exit 1
+        fi
+
   build:
+    needs: preflight
     strategy:
       matrix:
         include:
           - name: linux
             libc: glibc
-            docker_tag: azurelinux-3.0-net10.0-cross-loongarch64
+            docker_tag: azurelinux-3.0-net10.0-cross-loongarch64-lns23
           - name: linux-musl
             libc: musl
             docker_tag: azurelinux-3.0-net10.0-cross-loongarch64-musl
@@ -50,7 +73,15 @@ jobs:
 
     - name: Clone repository
       run: |
-        git clone --single-branch --depth 1 -b ${{ inputs.branch }} https://github.com/${{ inputs.fork }}/dotnet
+        set -euo pipefail
+        git clone --single-branch --depth 1 -b ${{ inputs.tag }} https://github.com/${{ inputs.fork }}/dotnet
+        # `clone -b` resolves a branch before a tag of the same name; the build
+        # must come from the tag, so bail out if a branch shadowed it.
+        if git -C dotnet symbolic-ref -q HEAD >/dev/null; then
+          echo "::error::'${{ inputs.tag }}' resolved to a branch; a tag with this name is required"
+          exit 1
+        fi
+        echo "building ${{ inputs.tag }} at $(git -C dotnet rev-parse HEAD)"
 
     - name: Apply patches
       run: |
@@ -65,7 +96,7 @@ jobs:
     - name: Build
       run: |
         docker run --platform linux/amd64 --rm -v${{ github.workspace }}/dotnet:/dotnet -w /dotnet -e ROOTFS_DIR=/crossrootfs/loongarch64 \
-          mcr.microsoft.com/dotnet-buildtools/prereqs:${{ matrix.docker_tag }} \
+          ghcr.io/chenguohui/dotnet-buildtools-prereqs-docker:${{ matrix.docker_tag }} \
             ./build.sh --clean-while-building --prep -sb --os ${{ matrix.name }} --rid ${{ matrix.name }}-loongarch64 \
               --arch loongarch64 --branding ${{ inputs.branding }} -p:OfficialBuildId=${{ inputs.buildid }}
 
@@ -93,26 +124,40 @@ jobs:
 
     - name: Make release
       run: |
+        set -euo pipefail
         sudo apt install -y hub
-        # hub(1) requires release to be created inside a git repo
+
+        tag_name="${{ inputs.tag }}"
+
+        # hub(1) requires release to be created inside a git repo; the release is
+        # created in the repository this workflow runs in.
         git clone https://${{ secrets.CLONE_TOKEN }}:x-oauth-basic@github.com/${{ github.repository }}.git repo
         cd repo
+
+        # This step only ever attaches a release to an existing tag. If the tag
+        # were missing, GitHub would create it from the default branch and the
+        # release would point at code that was not built.
+        if ! git rev-parse -q --verify "refs/tags/$tag_name" >/dev/null; then
+          echo "::error::tag '$tag_name' does not exist in ${{ github.repository }}"
+          exit 1
+        fi
+        echo "attaching release to tag '$tag_name' at $(git rev-parse "refs/tags/$tag_name^{commit}")"
+
         sdk_paths=$(find ${{ github.workspace }}/artifacts -name 'dotnet-sdk-*.tar.gz')
         psa_paths=$(find ${{ github.workspace }}/artifacts -name 'Private.SourceBuilt.Artifacts.*.tar.gz')
         artifacts=""
         for sdk_path in $sdk_paths; do
-          sdk_filename=$(basename "$sdk_path")
-          # Extract version: strip prefix/suffix to get e.g. "10.0.100-preview.5.25277.114"
-          sdk_version=$(echo "$sdk_filename" | sed -E 's/dotnet-sdk-([^-]+(-[^-]+)*)-linux-.+\.tar\.gz/\1/')
           artifacts="$artifacts -a $sdk_path"
-          tag_name="$sdk_version"
         done
         for psa_path in $psa_paths; do
           artifacts="$artifacts -a $psa_path"
         done
-        echo "tag_name: $tag_name"
         echo "artifacts: $artifacts"
+
         # docs: https://hub.github.com/hub-release.1.html
+        # The tag already exists, so GitHub ignores any target commit and the
+        # release lands on the tag: artifacts and generated source archives are
+        # all tied to the tagged commit.
         hub release create $artifacts --prerelease -m "$tag_name" "$tag_name"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
